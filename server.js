@@ -29,30 +29,34 @@ app.post("/read-pdf", upload.single("file"), async (req, res) => {
     let products = [];
 
     // ابحث عن الأسطر التي تحتوي رقمين (سعر وكمية)
-    lines.forEach(line => {
+    let products = [];
 
-      // مثال: Laptop 12 1 12
-      const parts = line.split(/\s+/);
+lines.forEach(line => {
 
-      if (parts.length >= 4) {
+  const parts = line.split(/\s+/);
 
-        const possiblePrice = parseFloat(parts[parts.length - 3]);
-        const possibleQty = parseInt(parts[parts.length - 2]);
-        const possibleTotal = parseFloat(parts[parts.length - 1]);
+  if (parts.length >= 4) {
 
-        if (!isNaN(possiblePrice) && !isNaN(possibleQty) && !isNaN(possibleTotal)) {
+    const cleanPrice = parts[parts.length - 3].replace(/[^\d.]/g, "");
+    const cleanQty = parts[parts.length - 2].replace(/[^\d]/g, "");
+    const cleanTotal = parts[parts.length - 1].replace(/[^\d.]/g, "");
 
-          const name = parts.slice(0, parts.length - 3).join(" ");
+    const price = parseFloat(cleanPrice);
+    const quantity = parseInt(cleanQty);
+    const total = parseFloat(cleanTotal);
 
-          products.push({
-            name: name,
-            price: possiblePrice,
-            quantity: possibleQty
-          });
-        }
-      }
+    if (!isNaN(price) && !isNaN(quantity) && !isNaN(total)) {
 
-    });
+      const name = parts.slice(0, parts.length - 3).join(" ");
+
+      products.push({
+        name: name,
+        price: price,
+        quantity: quantity
+      });
+    }
+  }
+});
 
     // استخراج التاريخ
     let date = "Not found";
