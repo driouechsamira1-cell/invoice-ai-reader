@@ -7,24 +7,28 @@ const app = express();
 const upload = multer();
 
 app.use(cors());
+app.use(express.json());
 
-app.post("/read-invoice", upload.single("file"), async (req, res) => {
+app.post("/read-pdf", upload.single("file"), async (req, res) => {
   try {
     const data = await pdfParse(req.file.buffer);
     const text = data.text;
 
     const totalMatch = text.match(/Total\s*[:\-]?\s*([\d.,]+)/i);
-    const dateMatch = text.match(/(\d{2}\/\d{2}\/\d{4})/);
+    const dateMatch = text.match(/\d{2}\/\d{2}\/\d{4}/);
 
     res.json({
       success: true,
       extractedText: text,
-      total: totalMatch ? totalMatch[1] : null,
-      date: dateMatch ? dateMatch[1] : null
+      total: totalMatch ? totalMatch[1] : "Not found",
+      date: dateMatch ? dateMatch[0] : "Not found"
     });
 
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: "Error reading PDF"
+    });
   }
 });
 
@@ -32,5 +36,5 @@ app.get("/", (req, res) => {
   res.send("Invoice AI Reader is running 🚀");
 });
 
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log("Server running on port " + PORT));
+const PORT = process.env.PORT || 8080;
+app.listen(PORT, () => console.log("Server running"));
