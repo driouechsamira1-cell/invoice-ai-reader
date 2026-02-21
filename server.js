@@ -13,52 +13,49 @@ app.post("/read-pdf", upload.single("file"), async (req, res) => {
   try {
 
     if (!req.file) {
-      return res.status(400).json({ success: false, error: "No file uploaded" });
+      return res.status(400).json({ success: false });
     }
 
     const data = await pdfParse(req.file.buffer);
     const text = data.text;
 
-    let total = "Not found";
-    const amountMatches = text.match(/\d+(?:[.,]\d{2})/g);
-
-    if (amountMatches && amountMatches.length > 0) {
-      let numbers = amountMatches.map(n =>
-        parseFloat(n.replace(",", "."))
-      );
-      total = Math.max(...numbers).toFixed(2);
-    }
-
-    let date = "Not found";
-    const dateMatch = text.match(/\d{4}-\d{2}-\d{2}/);
-    if (dateMatch) {
-      date = dateMatch[0];
-    }
+    const lines = text.split("\n").map(l => l.trim()).filter(l => l);
 
     let products = [];
-    const lines = text.split("\n");
 
-    lines.forEach(line => {
-      const match = line.match(/^(.+?)\s+(\d+)\s+(\d+[.,]\d{2})$/);
-      if (match) {
+    for (let i = 0; i < lines.length - 3; i++) {
+
+      let name = lines[i];
+      let price = parseFloat(lines[i+1]);
+      let quantity = parseInt(lines[i+2]);
+      let total = parseFloat(lines[i+3]);
+
+      if (!isNaN(price) && !isNaN(quantity) && !isNaN(total)) {
+
         products.push({
-          name: match[1].trim(),
-          quantity: parseInt(match[2]),
-          price: parseFloat(match[3].replace(",", "."))
+          name: name,
+          price: price,
+          quantity: quantity
         });
+
+        i += 3;
       }
-    });
+    }
+
+    // استخراج التاريخ
+    let date = "Not found";
+    const dateMatch = text.match(/\d{4}-\d{2}-\d{2}/);
+    if (dateMatch) date = dateMatch[0];
 
     res.json({
       success: true,
-      total,
       date,
       products
     });
 
   } catch (error) {
     console.error(error);
-    res.status(500).json({ success: false, error: "Server error" });
+    res.status(500).json({ success: false });
   }
 });
 
@@ -67,7 +64,4 @@ app.get("/", (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
-
-app.listen(PORT, () => {
-  console.log("Server running on port " + PORT);
-});
+app.listen(PORT);
