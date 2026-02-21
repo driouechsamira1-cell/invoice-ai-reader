@@ -12,7 +12,7 @@ app.use(express.json());
 app.post("/read-pdf", upload.single("file"), async (req, res) => {
   try {
     if (!req.file) {
-      return res.status(400).json({ success: false });
+      return res.status(400).json({ success: false, message: "No file uploaded" });
     }
 
     const data = await pdfParse(req.file.buffer);
@@ -28,43 +28,50 @@ app.post("/read-pdf", upload.single("file"), async (req, res) => {
 
     let products = [];
 
-    // ابحث عن الأسطر التي تحتوي رقمين (سعر وكمية)
-    let products = [];
+    lines.forEach(line => {
 
-lines.forEach(line => {
+      const parts = line.split(/\s+/);
 
-  const parts = line.split(/\s+/);
+      if (parts.length >= 4) {
 
-  if (parts.length >= 4) {
+        const cleanPrice = parts[parts.length - 3].replace(/[^\d.]/g, "");
+        const cleanQty = parts[parts.length - 2].replace(/[^\d]/g, "");
+        const cleanTotal = parts[parts.length - 1].replace(/[^\d.]/g, "");
 
-    const cleanPrice = parts[parts.length - 3].replace(/[^\d.]/g, "");
-    const cleanQty = parts[parts.length - 2].replace(/[^\d]/g, "");
-    const cleanTotal = parts[parts.length - 1].replace(/[^\d.]/g, "");
+        const price = parseFloat(cleanPrice);
+        const quantity = parseInt(cleanQty);
+        const total = parseFloat(cleanTotal);
 
-    const price = parseFloat(cleanPrice);
-    const quantity = parseInt(cleanQty);
-    const total = parseFloat(cleanTotal);
+        if (!isNaN(price) && !isNaN(quantity) && !isNaN(total)) {
 
-    if (!isNaN(price) && !isNaN(quantity) && !isNaN(total)) {
+          const name = parts.slice(0, parts.length - 3).join(" ");
 
-      const name = parts.slice(0, parts.length - 3).join(" ");
+          // تجنب إضافة رأس الجدول مثل Produit Prix Quantité Total
+          if (
+            name.toLowerCase().includes("produit") ||
+            name.toLowerCase().includes("price") ||
+            name.toLowerCase().includes("total")
+          ) {
+            return;
+          }
 
-      products.push({
-        name: name,
-        price: price,
-        quantity: quantity
-      });
-    }
-  }
-});
+          products.push({
+            name: name,
+            price: price,
+            quantity: quantity
+          });
+        }
+      }
+    });
 
-    // استخراج التاريخ
+    // استخراج التاريخ (عدة صيغ)
     let date = "Not found";
 
-    const dateMatch = text.match(/\d{4}-\d{2}-\d{2}/);
-    if (dateMatch) {
-      date = dateMatch[0];
-    }
+    const isoDate = text.match(/\d{4}-\d{2}-\d{2}/);
+    const frDate = text.match(/\d{1,2}\s\w+\s\d{4}/);
+
+    if (isoDate) date = isoDate[0];
+    else if (frDate) date = frDate[0];
 
     res.json({
       success: true,
@@ -73,7 +80,7 @@ lines.forEach(line => {
     });
 
   } catch (error) {
-    console.error(error);
+    console.error("ERROR:", error);
     res.status(500).json({ success: false });
   }
 });
@@ -83,6 +90,7 @@ app.get("/", (req, res) => {
 });
 
 const PORT = process.env.PORT || 3000;
+
 app.listen(PORT, () => {
   console.log("Server running on port " + PORT);
 });
